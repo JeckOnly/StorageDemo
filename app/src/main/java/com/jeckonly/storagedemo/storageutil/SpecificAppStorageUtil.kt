@@ -22,6 +22,44 @@ import java.io.OutputStream
 //  2)  (首先 /sdcard/、/storage/self/primary/ 真正指向的是/storage/emulated/0/，所以用x表示这三者) x/Android/data/com.xxx.xxx/...
 
 
+// 1)
+suspend fun saveImageToFilesDir(context: Context, bitmap: Bitmap): Boolean {
+    val result = withContext(Dispatchers.IO) {
+        val filename = "saveImage.jpg"
+        val file = File(context.filesDir, filename)
+        val fileOutputStream = FileOutputStream(file)
+        fileOutputStream.use {
+            val result = bitmap.compress(Bitmap.CompressFormat.JPEG, 100, it)
+            result
+        }
+    }
+    return result
+}
+
+fun deleteImageFromFilesDir(context: Context): Boolean {
+    val file = File(context.filesDir, "saveImage.jpg")
+    return if (file.exists() and file.isFile) {
+        file.delete()
+    } else false
+}
+
+suspend fun loadImageFormFilesDir(context: Context, imageName: String = "saveImage.jpg"): Bitmap? {
+    val bitmap: Bitmap? =  withContext(Dispatchers.IO) {
+        val file = File(context.filesDir, imageName)
+        if (file.exists() and file.canRead() and file.isFile) {
+            val bytes = file.readBytes()
+            val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            Log.d("TAG", "bmp hashcode: ${bmp.hashCode()}")
+            bmp
+        } else {
+            null
+        }
+    }
+    return bitmap
+}
+
+
+// -----2)
 /**
  * 使用[DownloadManager]下载一张图片到 x/Android/data/com.xxx.xxx/files/download 目录
  *
@@ -41,7 +79,7 @@ fun downloadImageToExternalFilesDir(context: Context, url: String = "https://pl-
 
 suspend fun loadImageFormExternalFilesDir(context: Context, imageName: String = "image.jpg"): Bitmap? {
     val bitmap: Bitmap? =  withContext(Dispatchers.IO) {
-        val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "image.jpg")
+        val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), imageName)
         if (file.exists() and file.canRead() and file.isFile) {
             val bytes = file.readBytes()
             val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)

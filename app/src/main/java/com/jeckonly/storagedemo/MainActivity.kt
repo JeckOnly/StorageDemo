@@ -6,8 +6,11 @@ import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.Button
+import androidx.compose.material.Divider
 import androidx.compose.material.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -18,10 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
-import com.jeckonly.storagedemo.storageutil.deleteImageFromExternalFilesDir
-import com.jeckonly.storagedemo.storageutil.downloadImageToExternalFilesDir
-import com.jeckonly.storagedemo.storageutil.loadImageFormExternalFilesDir
-import com.jeckonly.storagedemo.storageutil.saveImageToExternalFilesDir
+import com.jeckonly.storagedemo.storageutil.*
 import kotlinx.coroutines.launch
 
 class MainActivity : FragmentActivity() {
@@ -29,7 +29,10 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
 
-            var bitmap: Bitmap? by remember {
+            var externalBitmap: Bitmap? by remember {
+                mutableStateOf(null)
+            }
+            var internalBitmap: Bitmap? by remember {
                 mutableStateOf(null)
             }
             val scope = rememberCoroutineScope()
@@ -49,22 +52,29 @@ class MainActivity : FragmentActivity() {
                 Button(onClick = {
                     scope.launch {
                         val tempBitmap = loadImageFormExternalFilesDir(this@MainActivity)
-                        bitmap = tempBitmap
+                        externalBitmap = tempBitmap
                     }
                 }) {
                     Text(text = "从 external storage的应用专属文件夹加载bitmap")
                 }
                 Button(onClick = {
-                   bitmap = null
+                   externalBitmap = null
                 }) {
-                    Text(text = "重置图片")
+                    Text(text = "重置external图片")
                 }
-                if (bitmap != null) {
+                Row {
+                    Text(text = "external image:")
+                    if (externalBitmap != null) {
 
-                    Image(bitmap = bitmap!!.asImageBitmap(), contentDescription = null, modifier = Modifier.size(50.dp))
+                        Image(
+                            bitmap = externalBitmap!!.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier.size(50.dp)
+                        )
+                    }
                 }
                 Button(onClick = {
-                    bitmap?.let {
+                    externalBitmap?.let {
                         scope.launch {
                             val result = saveImageToExternalFilesDir(this@MainActivity, it)
                             if (result)
@@ -73,6 +83,52 @@ class MainActivity : FragmentActivity() {
                     }
                 }) {
                     Text(text = "把展示的image保存到external storage的应用专属文件夹")
+                }
+
+
+                Divider(modifier = Modifier.height(50.dp))
+
+
+                Button(onClick = {
+                    if (deleteImageFromFilesDir(this@MainActivity))
+                        Toast.makeText(this@MainActivity, "删除成功", Toast.LENGTH_SHORT).show()
+                }) {
+                    Text(text = "删除在internal storage的应用专属文件夹的图片")
+                }
+                Button(onClick = {
+                    scope.launch {
+                        val tempBitmap = loadImageFormFilesDir(this@MainActivity)
+                        internalBitmap = tempBitmap
+                    }
+                }) {
+                    Text(text = "从 internal storage的应用专属文件夹加载bitmap")
+                }
+                Button(onClick = {
+                    internalBitmap = null
+                }) {
+                    Text(text = "重置internal图片")
+                }
+                Row {
+                    Text(text = "internal image:")
+                    if (internalBitmap != null) {
+
+                        Image(
+                            bitmap = internalBitmap!!.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier.size(50.dp)
+                        )
+                    }
+                }
+                Button(onClick = {
+                    externalBitmap?.let {
+                        scope.launch {
+                            val result = saveImageToFilesDir(this@MainActivity, it)
+                            if (result)
+                                Toast.makeText(this@MainActivity, "保存成功", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }) {
+                    Text(text = "把展示的external image保存到 internal storage的应用专属文件夹")
                 }
             }
         }
