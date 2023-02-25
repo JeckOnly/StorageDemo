@@ -1,14 +1,19 @@
 package com.jeckonly.storagedemo
 
 import android.graphics.Bitmap
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.Button
 import androidx.compose.material.Divider
 import androidx.compose.material.Text
@@ -17,16 +22,54 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.lifecycleScope
+import coil.compose.AsyncImage
 import com.jeckonly.storagedemo.storageutil.*
 import kotlinx.coroutines.launch
 
 class MainActivity : FragmentActivity() {
+
+    private lateinit var intentSenderLauncher: ActivityResultLauncher<IntentSenderRequest>
+
+    private var deletedImageUri: Uri? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        intentSenderLauncher =
+            registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+                if (it.resultCode == RESULT_OK) {
+                    if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+                        lifecycleScope.launch {
+                            deletedImageUri?.let { it1 ->
+                                deleteImageFromExternalPublicStorage(
+                                    this@MainActivity.contentResolver, intentSenderLauncher,
+                                    it1
+                                )
+                            } ?: return@launch
+                        }
+                    }
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Photo deleted successfully",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } else {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Photo couldn't be deleted",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+
         setContent {
 
             var externalBitmap: Bitmap? by remember {
@@ -35,9 +78,19 @@ class MainActivity : FragmentActivity() {
             var internalBitmap: Bitmap? by remember {
                 mutableStateOf(null)
             }
+            var externalPublicImages: List<SharedStoragePhoto> by remember {
+                mutableStateOf(emptyList())
+            }
             val scope = rememberCoroutineScope()
 
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp), contentAlignment = Alignment.Center
+                ) {
+                    Text(text = "external storage中的应用专属")
+                }
                 Button(onClick = {
                     downloadImageToExternalFilesDir(this@MainActivity)
                 }) {
@@ -58,7 +111,7 @@ class MainActivity : FragmentActivity() {
                     Text(text = "从 external storage的应用专属文件夹加载bitmap")
                 }
                 Button(onClick = {
-                   externalBitmap = null
+                    externalBitmap = null
                 }) {
                     Text(text = "重置external图片")
                 }
@@ -86,9 +139,13 @@ class MainActivity : FragmentActivity() {
                 }
 
 
-                Divider(modifier = Modifier.height(50.dp))
-
-
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp), contentAlignment = Alignment.Center
+                ) {
+                    Text(text = "internal storage")
+                }
                 Button(onClick = {
                     if (deleteImageFromFilesDir(this@MainActivity))
                         Toast.makeText(this@MainActivity, "删除成功", Toast.LENGTH_SHORT).show()
@@ -129,6 +186,87 @@ class MainActivity : FragmentActivity() {
                     }
                 }) {
                     Text(text = "把展示的external image保存到 internal storage的应用专属文件夹")
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp), contentAlignment = Alignment.Center
+                ) {
+                    Text(text = "external storage public")
+                }
+
+                Button(onClick = {
+                    askPermissionForExternalPublicStorage(this@MainActivity)
+                }) {
+                    Text(text = "请求关于 external public 的权限")
+                }
+
+                Button(onClick = {
+                    externalBitmap?.let {
+                        scope.launch {
+                            val result = saveImageToExternalPublicStorage(
+                                this@MainActivity.contentResolver,
+                                "externalPublicImage.jpg",
+                                it
+                            )
+                            if (result)
+                                Toast.makeText(this@MainActivity, "保存成功", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }) {
+                    Text(text = "把展示的external image保存到 external public 中")
+                }
+
+                Button(onClick = {
+                    downloadImageToExternalPublic(this@MainActivity)
+                }) {
+                    Text(text = "从网络下载图片到external storage public")
+                }
+
+                Button(onClick = {
+                    scope.launch {
+                        externalPublicImages =
+                            loadImageFromExternalPublicStorage(this@MainActivity.contentResolver)
+                    }
+                }) {
+                    Text(text = "搜索 external public 中的image并展示（有权限才能看到其他应用的）")
+                }
+
+                Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                    for (image in externalPublicImages) {
+                        Column {
+                            Text(text = image.name)
+                            AsyncImage(
+                                model = image.contentUri,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(50.dp)
+                                    .clickable {
+                                        // 删除
+                                        scope.launch {
+                                            deleteImageFromExternalPublicStorage(
+                                                this@MainActivity.contentResolver,
+                                                intentSenderLauncher,
+                                                image.contentUri
+                                            )
+                                            deletedImageUri = image.contentUri
+                                        }
+                                    }
+                            )
+                        }
+                        Divider(
+                            modifier = Modifier
+                                .width(5.dp)
+                                .background(Color.Black)
+                        )
+                    }
+                }
+
+                Button(onClick = {
+                    // do nothing
+                }) {
+                    Text(text = "长按上面的图片删除 external public , 其他应用的可删")
                 }
             }
         }

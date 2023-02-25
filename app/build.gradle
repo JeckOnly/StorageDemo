@@ -64,4 +64,7 @@ dependencies {
 
     // 权限请求框架
     implementation 'com.guolindev.permissionx:permissionx:1.7.1'
+
+    // coil
+    implementation "io.coil-kt:coil-compose:2.2.2"
 }

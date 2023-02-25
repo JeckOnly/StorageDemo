@@ -5,17 +5,25 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+<!--    从Android 13开始，如果你的应用targetSdk指定到了33或以上，那么READ_EXTERNAL_STORAGE权限就完全失去了作用，申请它将不会产生任何的效果。-->
+
+<!--    与此相对应地，Google新增了READ_MEDIA_IMAGES、READ_MEDIA_VIDEO和READ_MEDIA_AUDIO这3个运行时权限，分别用于管理手机的照片、视频和音频文件。-->
+
+<!--    也就是说，以前只要申请一个READ_EXTERNAL_STORAGE权限就可以了。现在不行了，得按需申请，用户从而能够更加精细地了解你的应用到底申请了哪些媒体权限。-->
+<!--    -->
+<!--    原文链接：https://blog.csdn.net/guolin_blog/article/details/127024559-->
+
     <!-- Required only if your app needs to access images or photos
      that other apps created. -->
-<!--    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />-->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
     <!-- Required only if your app needs to access videos
          that other apps created. -->
-<!--    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />-->
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
     <!-- Required only if your app needs to access audio files
          that other apps created. -->
-<!--    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />-->
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
     <!-- If your app doesn't need to access media files that other apps created,
          set the "maxSdkVersion" attribute to "28" instead. -->
