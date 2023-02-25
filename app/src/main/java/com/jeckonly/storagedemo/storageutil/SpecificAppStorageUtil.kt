@@ -23,9 +23,8 @@ import java.io.OutputStream
 
 
 // 1)
-suspend fun saveImageToFilesDir(context: Context, bitmap: Bitmap): Boolean {
+suspend fun saveImageToFilesDir(context: Context, bitmap: Bitmap, filename: String): Boolean {
     val result = withContext(Dispatchers.IO) {
-        val filename = "saveImage.jpg"
         val file = File(context.filesDir, filename)
         val fileOutputStream = FileOutputStream(file)
         fileOutputStream.use {
@@ -36,14 +35,14 @@ suspend fun saveImageToFilesDir(context: Context, bitmap: Bitmap): Boolean {
     return result
 }
 
-fun deleteImageFromFilesDir(context: Context): Boolean {
-    val file = File(context.filesDir, "saveImage.jpg")
+fun deleteImageFromFilesDir(context: Context, filename: String): Boolean {
+    val file = File(context.filesDir, filename)
     return if (file.exists() and file.isFile) {
         file.delete()
     } else false
 }
 
-suspend fun loadImageFormFilesDir(context: Context, imageName: String = "saveImage.jpg"): Bitmap? {
+suspend fun loadImageFormFilesDir(context: Context, imageName: String): Bitmap? {
     val bitmap: Bitmap? =  withContext(Dispatchers.IO) {
         val file = File(context.filesDir, imageName)
         if (file.exists() and file.canRead() and file.isFile) {
@@ -66,18 +65,18 @@ suspend fun loadImageFormFilesDir(context: Context, imageName: String = "saveIma
  * setDestinationInExternalFilesDir这一行的等价写法为
  *      setDestinationUri(Uri.fromFile(File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "image.jpg"))) 这个api的uri只能是external storage的路径
  */
-fun downloadImageToExternalFilesDir(context: Context, url: String = "https://pl-coding.com/wp-content/uploads/2022/04/pic-squared.jpg"): Long {
+fun downloadImageToExternalFilesDir(context: Context, filename: String, url: String = "https://i.pinimg.com/474x/ee/20/dc/ee20dc865f60372d5ade0b80b754f6d1.jpg"): Long {
     val downloadManager = context.getSystemService(DownloadManager::class.java)
     val request = DownloadManager.Request(url.toUri())
         .setMimeType("image/jpeg")
         .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
         .setTitle("image.jpg")
         .addRequestHeader("Authorization", "Bearer <token>")
-        .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, "image.jpg")
+        .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, filename)
     return downloadManager.enqueue(request)
 }
 
-suspend fun loadImageFormExternalFilesDir(context: Context, imageName: String = "image.jpg"): Bitmap? {
+suspend fun loadImageFormExternalFilesDir(context: Context, imageName: String): Bitmap? {
     val bitmap: Bitmap? =  withContext(Dispatchers.IO) {
         val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), imageName)
         if (file.exists() and file.canRead() and file.isFile) {
@@ -92,16 +91,15 @@ suspend fun loadImageFormExternalFilesDir(context: Context, imageName: String = 
     return bitmap
 }
 
-fun deleteImageFromExternalFilesDir(context: Context): Boolean {
-    val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "image.jpg")
+fun deleteImageFromExternalFilesDir(context: Context, filename: String): Boolean {
+    val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), filename)
     return if (file.exists() and file.isFile) {
         file.delete()
     } else false
 }
 
-suspend fun saveImageToExternalFilesDir(context: Context, bitmap: Bitmap): Boolean {
+suspend fun saveImageToExternalFilesDir(context: Context, bitmap: Bitmap, filename: String): Boolean {
     val result = withContext(Dispatchers.IO) {
-        val filename = "saveImage.jpg"
         val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), filename)
         val fileOutputStream = FileOutputStream(file)
         fileOutputStream.use {

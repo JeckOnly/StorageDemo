@@ -1,6 +1,7 @@
 package com.jeckonly.storagedemo
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -33,12 +34,17 @@ import androidx.lifecycle.lifecycleScope
 import coil.compose.AsyncImage
 import com.jeckonly.storagedemo.storageutil.*
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class MainActivity : FragmentActivity() {
 
     private lateinit var intentSenderLauncher: ActivityResultLauncher<IntentSenderRequest>
 
     private var deletedImageUri: Uri? = null
+
+    val networkImageName = "networkImage.jpg"
+
+    val resourceImageName = "resourceImage.jpg"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,6 +53,7 @@ class MainActivity : FragmentActivity() {
             registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
                 if (it.resultCode == RESULT_OK) {
                     if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+                        // Android 10 删除其他应用的文件第一次按dialog，允许删除仅仅只是授权。
                         lifecycleScope.launch {
                             deletedImageUri?.let { it1 ->
                                 deleteImageFromExternalPublicStorage(
@@ -92,19 +99,26 @@ class MainActivity : FragmentActivity() {
                     Text(text = "external storage中的应用专属")
                 }
                 Button(onClick = {
-                    downloadImageToExternalFilesDir(this@MainActivity)
+                    downloadImageToExternalFilesDir(this@MainActivity, networkImageName)
                 }) {
                     Text(text = "从网络下载图片到external storage的应用专属文件夹")
                 }
                 Button(onClick = {
-                    if (deleteImageFromExternalFilesDir(this@MainActivity))
+                    scope.launch {
+                        saveImageToExternalFilesDir(this@MainActivity, BitmapFactory.decodeResource(this@MainActivity.resources, R.drawable.boy), resourceImageName)
+                    }
+                }) {
+                    Text(text = "从resources文件夹下载图片到external storage的应用专属文件夹")
+                }
+                Button(onClick = {
+                    if (deleteImageFromExternalFilesDir(this@MainActivity, resourceImageName))
                         Toast.makeText(this@MainActivity, "删除成功", Toast.LENGTH_SHORT).show()
                 }) {
                     Text(text = "删除在external storage的应用专属文件夹的图片")
                 }
                 Button(onClick = {
                     scope.launch {
-                        val tempBitmap = loadImageFormExternalFilesDir(this@MainActivity)
+                        val tempBitmap = loadImageFormExternalFilesDir(this@MainActivity, resourceImageName)
                         externalBitmap = tempBitmap
                     }
                 }) {
@@ -129,7 +143,7 @@ class MainActivity : FragmentActivity() {
                 Button(onClick = {
                     externalBitmap?.let {
                         scope.launch {
-                            val result = saveImageToExternalFilesDir(this@MainActivity, it)
+                            val result = saveImageToExternalFilesDir(this@MainActivity, it, UUID.randomUUID().toString() + ".jpg")
                             if (result)
                                 Toast.makeText(this@MainActivity, "保存成功", Toast.LENGTH_SHORT).show()
                         }
@@ -147,14 +161,14 @@ class MainActivity : FragmentActivity() {
                     Text(text = "internal storage")
                 }
                 Button(onClick = {
-                    if (deleteImageFromFilesDir(this@MainActivity))
+                    if (deleteImageFromFilesDir(this@MainActivity, resourceImageName))
                         Toast.makeText(this@MainActivity, "删除成功", Toast.LENGTH_SHORT).show()
                 }) {
                     Text(text = "删除在internal storage的应用专属文件夹的图片")
                 }
                 Button(onClick = {
                     scope.launch {
-                        val tempBitmap = loadImageFormFilesDir(this@MainActivity)
+                        val tempBitmap = loadImageFormFilesDir(this@MainActivity, resourceImageName)
                         internalBitmap = tempBitmap
                     }
                 }) {
@@ -179,7 +193,7 @@ class MainActivity : FragmentActivity() {
                 Button(onClick = {
                     externalBitmap?.let {
                         scope.launch {
-                            val result = saveImageToFilesDir(this@MainActivity, it)
+                            val result = saveImageToFilesDir(this@MainActivity, it, resourceImageName)
                             if (result)
                                 Toast.makeText(this@MainActivity, "保存成功", Toast.LENGTH_SHORT).show()
                         }
@@ -207,7 +221,7 @@ class MainActivity : FragmentActivity() {
                         scope.launch {
                             val result = saveImageToExternalPublicStorage(
                                 this@MainActivity.contentResolver,
-                                "externalPublicImage.jpg",
+                                resourceImageName,
                                 it
                             )
                             if (result)
@@ -219,7 +233,7 @@ class MainActivity : FragmentActivity() {
                 }
 
                 Button(onClick = {
-                    downloadImageToExternalPublic(this@MainActivity)
+                    downloadImageToExternalPublic(this@MainActivity, networkImageName)
                 }) {
                     Text(text = "从网络下载图片到external storage public")
                 }
@@ -266,7 +280,7 @@ class MainActivity : FragmentActivity() {
                 Button(onClick = {
                     // do nothing
                 }) {
-                    Text(text = "长按上面的图片删除 external public , 其他应用的可删")
+                    Text(text = "点击上面的图片删除 external public , 其他应用的可删；需要手动刷新")
                 }
             }
         }

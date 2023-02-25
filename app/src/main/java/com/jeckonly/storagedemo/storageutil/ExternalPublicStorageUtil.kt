@@ -7,16 +7,15 @@ import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
-import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.fragment.app.FragmentActivity
 import com.permissionx.guolindev.PermissionX
@@ -77,7 +76,7 @@ fun askPermissionForExternalPublicStorage(activity: FragmentActivity) {
  */
 suspend fun saveImageToExternalPublicStorage(
     contentResolver: ContentResolver,
-    displayName: String,
+    filename: String,
     bmp: Bitmap
 ): Boolean {
     return withContext(Dispatchers.IO) {
@@ -86,7 +85,7 @@ suspend fun saveImageToExternalPublicStorage(
         } ?: MediaStore.Images.Media.EXTERNAL_CONTENT_URI
 
         val contentValues = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, "$displayName.jpg")
+            put(MediaStore.Images.Media.DISPLAY_NAME, "$filename.jpg")
             put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
             put(MediaStore.Images.Media.WIDTH, bmp.width)
             put(MediaStore.Images.Media.HEIGHT, bmp.height)
@@ -115,6 +114,7 @@ suspend fun saveImageToExternalPublicStorage(
  */
 fun downloadImageToExternalPublic(
     context: Context,
+    filename: String,
     url: String = "https://i.pinimg.com/474x/01/96/ab/0196abb1fc39a30271bab3576120454d.jpg"
 ): Long {
     val downloadManager = context.getSystemService(DownloadManager::class.java)
@@ -123,7 +123,7 @@ fun downloadImageToExternalPublic(
         .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
         .setTitle("girl.jpg")
         .addRequestHeader("Authorization", "Bearer <token>")
-        .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "girl.jpg")
+        .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename)
     return downloadManager.enqueue(request)
 }
 
@@ -200,12 +200,13 @@ suspend fun deleteImageFromExternalPublicStorage(
                 }
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
                     val recoverableSecurityException =
-                        e as? RecoverableSecurityException ?: throw RuntimeException(e.message, e)
-                    recoverableSecurityException.userAction.actionIntent.intentSender
+                        e as? RecoverableSecurityException
+                    recoverableSecurityException?.userAction?.actionIntent?.intentSender
                 }
-                else -> throw RuntimeException(e.message, e)
+                else -> null
             }
-            intentSender.let { sender ->
+            Log.d("deleteImageFromExternalPublicStorage", intentSender.toString())
+            intentSender?.let { sender ->
                 intentSenderLauncher.launch(
                     IntentSenderRequest.Builder(sender).build()
                 )
